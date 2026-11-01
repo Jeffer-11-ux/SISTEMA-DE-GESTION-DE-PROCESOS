@@ -1,5 +1,3 @@
-# SISTEMA-DE-GESTION-DE-PROCESOS
-
 #include <iostream>
 #include <string>
 #include <fstream>
