@@ -418,8 +418,107 @@ public:
     int getCapacidad() const { return capacidadTotalMB; }
 };
 
+class GestorArchivos
+{
+	public:
+	    static bool guardarProcesos(const ListaProcesos& lista, const string& ruta)
+		{
+	        ofstream archivo(ruta.c_str());
+	        if (!archivo.is_open()) return false;
+	
+	        NodoProceso* actual = lista.getCabeza();
+	        while (actual != NULL)
+			{
+	            archivo << actual->info.id << ";"
+	                    << actual->info.nombre << ";"
+	                    << actual->info.prioridad << ";"
+	                    << actual->info.memoriaMB << ";"
+	                    << actual->info.estado << "\n";
+	            actual = actual->siguiente;
+	        }
+	        archivo.close();
+	        return true;
+	    }
+	
+	    static bool cargarProcesos(ListaProcesos& lista, const string& ruta)
+		{
+	        ifstream archivo(ruta.c_str());
+	        if (!archivo.is_open()) return false;
+	
+	        lista.limpiar();
+	        string linea;
+	        while (getline(archivo, linea))
+			{
+	            if (linea.empty()) continue;
+	
+	            size_t p1 = linea.find(';');
+	            size_t p2 = linea.find(';', p1 + 1);
+	            size_t p3 = linea.find(';', p2 + 1);
+	            size_t p4 = linea.find(';', p3 + 1);
+	
+	            if (p1 != string::npos && p2 != string::npos && p3 != string::npos && p4 != string::npos)
+				{
+	                Proceso p;
+	                p.id = atoi(linea.substr(0, p1).c_str());
+	                p.nombre = linea.substr(p1 + 1, p2 - p1 - 1);
+	                p.prioridad = atoi(linea.substr(p2 + 1, p3 - p2 - 1).c_str());
+	                p.memoriaMB = atoi(linea.substr(p3 + 1, p4 - p3 - 1).c_str());
+	                p.estado = linea.substr(p4 + 1);
+	
+	                lista.insertar(p);
+	            }
+	        }
+            archivo.close();
+	        return true;
+	    }
+};
 
+int leerEnteroValido(const string& mensaje, int minVal = 0, int maxVal = 999999)
+{
+    int valor;
+    while (true)
+	{
+        cout << mensaje;
+        if (cin >> valor && valor >= minVal && valor <= maxVal)
+		{
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            return valor;
+        }
+		else
+		{
+            cout << " [ENTRADA INVALIDA] Ingrese un numero valido entre " << minVal << " y " << maxVal << ".\n";
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        }
+    }
+}
 
+string leerTexto(const string& mensaje)
+{
+    string texto;
+    cout << mensaje;
+    getline(cin, texto);
+    return texto;
+}
 
+void mostrarMenuPrincipal()
+{
+    cout << "\n =====================================================================\n";
+    cout << "             SISTEMA DE GESTION DE PROCESOS              \n";
+    cout << " =====================================================================\n";
+    cout << "  1. Registrar nuevo proceso en Lista\n";
+    cout << "  2. Eliminar proceso por ID de Lista\n";
+    cout << "  3. Buscar procesos por ID o Nombre\n";
+    cout << "  4. Modificar prioridad de proceso\n";
+    cout << "  5. Modificar estado de proceso\n";
+    cout << "  6. Encolar proceso en CPU (Encolar)\n";
+    cout << "  7. Ejecutar proceso en CPU (Desencolar)\n";
+    cout << "  8. Asignar memoria a proceso (Pila)\n";
+    cout << "  9. Liberar ultimo bloque de memoria (Pila)\n";
+    cout << " 10. Mostrar estado general de Lista, CPU y Memoria\n";
+    cout << " 11. Guardar estado en archivo\n";
+    cout << " 12. Cargar estado desde archivo\n";
+    cout << "  0. Salir del programa\n";
+    cout << " =====================================================================\n";
+}
 
-  
