@@ -211,6 +211,215 @@ public:
 
 
 
+class ColaPrioridadCPU {
+private:
+    NodoProceso* frente;
+    ListaProcesos historialAtendidos; 
+
+
+public:
+    ColaPrioridadCPU() : frente(NULL) {}
+
+
+    ~ColaPrioridadCPU() {
+        limpiar();
+    }
+
+
+    void limpiar() {
+        while (frente != NULL) {
+            NodoProceso* aux = frente;
+            frente = frente->siguiente;
+            delete aux;
+        }
+    }
+
+
+    void encolar(const Proceso& p) {
+        NodoProceso* nuevo = new NodoProceso(p);
+        if (frente == NULL || p.prioridad > frente->info.prioridad) {
+            nuevo->siguiente = frente;
+            frente = nuevo;
+        } else {
+            NodoProceso* actual = frente;
+            while (actual->siguiente != NULL && actual->siguiente->info.prioridad >= p.prioridad) {
+                actual = actual->siguiente;
+            }
+            nuevo->siguiente = actual->siguiente;
+            actual->siguiente = nuevo;
+        }
+    }
+
+
+    bool desencolarYEjecutar(Proceso& pEjecutado) {
+        if (frente == NULL) return false;
+
+
+        NodoProceso* aux = frente;
+        pEjecutado = aux->info;
+        pEjecutado.estado = "Terminado";
+        
+ 
+        historialAtendidos.insertar(pEjecutado);
+
+
+        frente = frente->siguiente;
+        delete aux;
+        return true;
+    }
+
+
+    void mostrarColaPendiente() const {
+        if (frente == NULL) {
+            cout << "\n [INFO] La cola de ejecucion de CPU esta vacia (Sin pendientes).\n";
+            return;
+        }
+
+
+        cout << "\n =====================================================================\n";
+        cout << "             COLA PENDIENTE DE ATENCION (PLANIFICADOR CPU)            \n";
+        cout << " =====================================================================\n";
+        cout << left << setw(8) << "ID"
+             << setw(20) << "Nombre"
+             << setw(12) << "Prioridad"
+             << setw(15) << "Estado" << "\n";
+        cout << " ---------------------------------------------------------------------\n";
+
+
+        NodoProceso* actual = frente;
+        while (actual != NULL) {
+            cout << left << setw(8) << actual->info.id
+                 << setw(20) << actual->info.nombre
+                 << setw(12) << actual->info.prioridad
+                 << setw(15) << actual->info.estado << "\n";
+            actual = actual->siguiente;
+        }
+        cout << " ---------------------------------------------------------------------\n";
+    }
+
+
+    void mostrarProcesosAtendidos() const {
+        cout << "\n --- HISTORIAL DE PROCESOS ATENDIDOS POR LA CPU ---";
+        historialAtendidos.mostrar();
+    }
+
+
+    bool estaVacia() const { return frente == NULL; }
+};
+
+
+class PilaMemoria {
+private:
+    NodoMemoria* tope;
+    int capacidadTotalMB;
+    int memoriaUsadaMB;
+    int contadorBloques;
+
+
+public:
+    PilaMemoria(int capacidadMB = 2048) 
+        : tope(NULL), capacidadTotalMB(capacidadMB), memoriaUsadaMB(0), contadorBloques(0) {}
+
+
+    ~PilaMemoria() {
+        limpiar();
+    }
+
+
+    void limpiar() {
+        while (tope != NULL) {
+            NodoMemoria* aux = tope;
+            tope = tope->siguiente;
+            delete aux;
+        }
+        memoriaUsadaMB = 0;
+        contadorBloques = 0;
+    }
+
+
+    bool push(int idProceso, int tamanoMB) {
+        if (memoriaUsadaMB + tamanoMB > capacidadTotalMB) {
+            cout << " [ERROR] Memoria insuficiente. Disponible: " 
+                 << (capacidadTotalMB - memoriaUsadaMB) << " MB\n";
+            return false;
+        }
+
+
+        contadorBloques++;
+        BloqueMemoria b = { contadorBloques, idProceso, tamanoMB };
+        NodoMemoria* nuevo = new NodoMemoria(b);
+        nuevo->siguiente = tope;
+        tope = nuevo;
+        memoriaUsadaMB += tamanoMB;
+        return true;
+    }
+
+
+    bool pop(BloqueMemoria& bLiberado) {
+        if (tope == NULL) return false;
+
+
+        NodoMemoria* aux = tope;
+        bLiberado = aux->info;
+        memoriaUsadaMB -= bLiberado.tamanoMB;
+        tope = tope->siguiente;
+        delete aux;
+        return true;
+    }
+
+
+    void mostrarProcesoCima() const {
+        if (tope == NULL) {
+            cout << "\n [INFO] La pila de memoria esta vacia. No hay bloques en la cima.\n";
+            return;
+        }
+        cout << "\n =====================================================================\n";
+        cout << "                   PROCESO EN LA CIMA DE LA PILA (PEEK)               \n";
+        cout << " =====================================================================\n";
+        cout << " ID Bloque : " << tope->info.idBloque << "\n";
+        cout << " ID Proceso: " << tope->info.idProceso << "\n";
+        cout << " Tamano MB : " << tope->info.tamanoMB << " MB\n";
+        cout << " =====================================================================\n";
+    }
+
+
+    void mostrarEstado() const {
+        cout << "\n =====================================================================\n";
+        cout << "                      GESTOR DE MEMORIA RAM (PILA)                    \n";
+        cout << " =====================================================================\n";
+        cout << " Capacidad Total: " << capacidadTotalMB << " MB | Usada: "<< memoriaUsadaMB << " MB | Libre: " << (capacidadTotalMB - memoriaUsadaMB) << " MB\n";
+        cout << " ---------------------------------------------------------------------\n";
+
+
+        if (tope == NULL) {
+            cout << " [INFO] No hay bloques de memoria asignados.\n";
+            return;
+        }
+
+
+        cout << left << setw(12) << "ID Bloque"
+             << setw(14) << "ID Proceso"
+             << setw(16) << "Tamano (MB)" << "\n";
+        cout << " -----------------------------------------------------------------\n";
+
+
+        NodoMemoria* actual = tope;
+        while (actual != NULL) {
+            cout << left << setw(12) << actual->info.idBloque
+                 << setw(14) << actual->info.idProceso
+                 << setw(16) << actual->info.tamanoMB << "\n";
+            actual = actual->siguiente;
+        }
+        cout << " ---------------------------------------------------------------------\n";
+    }
+
+
+    int getMemoriaUsada() const { return memoriaUsadaMB; }
+    int getCapacidad() const { return capacidadTotalMB; }
+};
+
+
+
 
 
   
