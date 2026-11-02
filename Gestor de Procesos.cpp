@@ -501,24 +501,194 @@ string leerTexto(const string& mensaje)
     return texto;
 }
 
-void mostrarMenuPrincipal()
-{
+void mostrarMenuPrincipal() {
     cout << "\n =====================================================================\n";
-    cout << "             SISTEMA DE GESTION DE PROCESOS              \n";
+    cout << "              SISTEMA DE GESTION DE PROCESOS - DEV C++                \n";
     cout << " =====================================================================\n";
-    cout << "  1. Registrar nuevo proceso en Lista\n";
-    cout << "  2. Eliminar proceso por ID de Lista\n";
-    cout << "  3. Buscar procesos por ID o Nombre\n";
+    cout << "  1. Registrar nuevo proceso (Lista)\n";
+    cout << "  2. Eliminar proceso por ID (Lista)\n";
+    cout << "  3. Buscar procesos (por ID o Nombre)\n";
     cout << "  4. Modificar prioridad de proceso\n";
     cout << "  5. Modificar estado de proceso\n";
-    cout << "  6. Encolar proceso en CPU (Encolar)\n";
+    cout << "  6. Encolar proceso en CPU (Cola de Prioridad)\n";
     cout << "  7. Ejecutar proceso en CPU (Desencolar)\n";
-    cout << "  8. Asignar memoria a proceso (Pila)\n";
-    cout << "  9. Liberar ultimo bloque de memoria (Pila)\n";
-    cout << " 10. Mostrar estado general de Lista, CPU y Memoria\n";
-    cout << " 11. Guardar estado en archivo\n";
-    cout << " 12. Cargar estado desde archivo\n";
-    cout << "  0. Salir del programa\n";
+    cout << "  8. Ver cola pendiente y procesos atendidos en CPU\n";
+    cout << "  9. Asignar memoria a proceso (Pila Push)\n";
+    cout << " 10. Liberar ultimo bloque de memoria (Pila Pop)\n";
+    cout << " 11. Mostrar proceso en la Cima de RAM (Peek)\n";
+    cout << " 12. Mostrar estado general (Lista, CPU y Memoria Libre/Ocupada)\n";
+    cout << " 13. Guardar estado en archivo (procesos.txt)\n";
+    cout << " 14. Cargar estado desde archivo (procesos.txt)\n";
+    cout << " 15. Salir del programa\n";
     cout << " =====================================================================\n";
 }
+int main() {
+	setlocale(LC_CTYPE, "Spanish");
+    ListaProcesos lista;
+    ColaPrioridadCPU cpu;
+    PilaMemoria memoria(2048); 
 
+    const string RUTA_ARCHIVO = "procesos.txt";
+    int opcion;
+
+    if (GestorArchivos::cargarProcesos(lista, RUTA_ARCHIVO)) {
+        cout << "Se cargaron datos automaticamente desde 'procesos.txt'.\n";
+    }
+
+    do {
+        mostrarMenuPrincipal();
+        opcion = leerEnteroValido(" Seleccione una opcion (0-14): ");
+        switch (opcion) {
+            case 1: {
+                Proceso p;
+                p.id = leerEnteroValido(" ID del proceso: ", 1, 9999);
+                p.nombre = leerTexto(" Nombre del proceso: ");
+                p.prioridad = leerEnteroValido(" Prioridad [1=Baja, 5=Alta]: ", 1, 5);
+                p.memoriaMB = leerEnteroValido(" Memoria requerida (MB): ", 1, 1024);
+                p.estado = "Listo";
+
+                if (lista.insertar(p)) {
+                    cout << "Proceso registrado correctamente en la Lista.\n";
+                }
+                break;
+            }
+            case 2: {
+                int id = leerEnteroValido(" Ingrese ID a eliminar: ", 1, 9999);
+                if (lista.eliminar(id)) {
+                    cout << "Proceso con ID " << id << " eliminado.\n";
+                } else {
+                    cout << "No se encontro el proceso con ID " << id << ".\n";
+                }
+                break;
+            }
+            case 3: {
+                cout << " 1. Buscar por ID | 2. Buscar por Nombre\n";
+                int subOp = leerEnteroValido(" Opcion: ", 1, 2);
+                if (subOp == 1) {
+                    int id = leerEnteroValido(" ID a buscar: ", 1, 9999);
+                    NodoProceso* nodo = lista.buscarPorId(id);
+                    if (nodo != NULL) {
+                        cout << " ID: " << nodo->info.id;
+                        cout << " Nombre: " << nodo->info.nombre;
+                        cout << " Prioridad: " << nodo->info.prioridad;
+                        cout << " Memoria: " << nodo->info.memoriaMB << "MB";
+                        cout << " Estado: " << nodo->info.estado << "\n";
+                    } else {
+                        cout << "No se encontro el ID especificado.\n";
+                    }
+                } else {
+                    string nom = leerTexto(" Ingrese nombre o substring: ");
+                    lista.buscarPorNombre(nom);
+                }
+                break;
+            }
+            case 4: {
+                int id = leerEnteroValido(" ID del proceso: ", 1, 9999);
+                int pri = leerEnteroValido(" Nueva prioridad (1-5): ", 1, 5);
+                if (lista.modificarPrioridad(id, pri)) {
+                    cout << "Prioridad actualizada correctamente.\n";
+                } else {
+                    cout << "No se encontro el proceso.\n";
+                }
+                break;
+            }
+            case 5: {
+                int id = leerEnteroValido(" ID del proceso: ", 1, 9999);
+                cout<< "Estados disponibles: \n";
+                cout<< "1. Listo\n";
+                cout<< "2. En Ejecucion\n";
+                cout<< "3. Bloqueado\n";
+                cout<< "4. Terminado\n";
+                int estOp = leerEnteroValido(" Seleccione estado: ", 1, 4);
+                string estados[] = { "Listo", "En Ejecucion", "Bloqueado", "Terminado" };
+                if (lista.modificarEstado(id, estados[estOp - 1])) {
+                    cout << "Estado actualizado" << estados[estOp - 1] << "'.\n";
+                } else {
+                    cout << "No se encontro el proceso.\n";
+                }
+                break;
+            }
+            case 6: {
+                int id = leerEnteroValido(" ID del proceso a encolar en CPU: ", 1,3000);
+                NodoProceso* nodo = lista.buscarPorId(id);
+                if (nodo != NULL) {
+                    cpu.encolar(nodo->info);
+                    lista.modificarEstado(id, "Listo (En Cola)");
+                    cout << "Proceso encolado segun su prioridad (" << nodo->info.prioridad << ").\n";
+                } else {
+                    cout << "No se encontro el proceso en la lista.\n";
+                }
+                break;
+            }
+            case 7: {
+                Proceso pEj;
+                if (cpu.desencolarYEjecutar(pEj)) {
+                    cout << "Ejecutando proceso ID: " << pEj.id 
+                         << " (" << pEj.nombre << ") con Prioridad: " << pEj.prioridad << "\n";
+                    lista.modificarEstado(pEj.id, "Terminado");
+                } else {
+                    cout << "No hay procesos en la cola de CPU.\n";
+                }
+                break;
+            }
+            case 8: {
+                cpu.mostrarColaPendiente();
+                cpu.mostrarProcesosAtendidos();
+                break;
+            }
+            case 9: {
+                int id = leerEnteroValido(" ID del proceso para asignar memoria: ", 1, 3000);
+                NodoProceso* nodo = lista.buscarPorId(id);
+                if (nodo != NULL) {
+                    if (memoria.push(id, nodo->info.memoriaMB)) {
+                        cout << "Se asignaron " << nodo->info.memoriaMB << " MB al proceso ID " << id << ".\n";
+                    }
+                } else {
+                    cout << "No se encontro el proceso registrado.\n";
+                }
+                break;
+            }
+            case 10: {
+                BloqueMemoria b;
+                if (memoria.pop(b)) {
+                    cout << "Liberado Bloque " << b.idBloque 
+                         << " del Proceso ID " << b.idProceso << " (" << b.tamanoMB << " MB).\n";
+                } else {
+                    cout << "La pila de memoria esta vacia.\n";
+                }
+                break;
+            }
+            case 11: {
+                memoria.mostrarProcesoCima();
+                break;
+            }
+            case 12: {
+                lista.mostrar();
+                cpu.mostrarColaPendiente();
+                memoria.mostrarEstado();
+                break;
+            }
+            case 13: {
+                if (GestorArchivos::guardarProcesos(lista, RUTA_ARCHIVO)) {
+                    cout << "Estado guardado correctamente en '" << RUTA_ARCHIVO << "'.\n";
+                } else {
+                    cout << "No se pudo guardar el archivo.\n";
+                }
+                break;
+            }
+            case 14: {
+                if (GestorArchivos::cargarProcesos(lista, RUTA_ARCHIVO)) {
+                    cout << "Datos cargados exitosamente desde '" << RUTA_ARCHIVO << "'.\n";
+                } else {
+                    cout << "No se pudo cargar el archivo.\n";
+                }
+                break;
+            }
+            case 0:
+                cout << "Hasta luego, vuelva pronto !\n";
+                break;
+        }
+
+    } while (opcion != 15);
+    return 0;
+}
